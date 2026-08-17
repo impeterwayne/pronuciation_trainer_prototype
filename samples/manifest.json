@@ -1,0 +1,434 @@
+[
+  {
+    "file": "sentences/cmu_arctic_us_female_a0001.wav",
+    "text": "Author of the danger trail, Philip Steels, etc.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Female - slt)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_slt_arctic/wav/arctic_a0001.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_male_a0001.wav",
+    "text": "Author of the danger trail, Philip Steels, etc.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Male - bdl)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_bdl_arctic/wav/arctic_a0001.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_scottish_male_a0001.wav",
+    "text": "Author of the danger trail, Philip Steels, etc.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (Scottish Male - awb)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_awb_arctic/wav/arctic_a0001.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_female_a0002.wav",
+    "text": "Not at this particular case, Tom, apologized Whittemore.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Female - slt)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_slt_arctic/wav/arctic_a0002.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_male_a0003.wav",
+    "text": "For the twentieth time that evening the two men shook hands.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Male - bdl)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_bdl_arctic/wav/arctic_a0003.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_female_a0004.wav",
+    "text": "Lord, but I'm glad to see you again, Phil.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Female - slt)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_slt_arctic/wav/arctic_a0004.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_male_a0004.wav",
+    "text": "Lord, but I'm glad to see you again, Phil.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Male - bdl)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_bdl_arctic/wav/arctic_a0004.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_us_female_a0005.wav",
+    "text": "Will we ever forget it.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (US Female - slt)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_slt_arctic/wav/arctic_a0005.wav"
+  },
+  {
+    "file": "sentences/cmu_arctic_scottish_male_a0005.wav",
+    "text": "Will we ever forget it.",
+    "category": "sentence",
+    "speaker": "CMU Arctic (Scottish Male - awb)",
+    "type": "human",
+    "source": "http://www.festvox.org/cmu_arctic/cmu_arctic/cmu_us_awb_arctic/wav/arctic_a0005.wav"
+  },
+  {
+    "file": "sentences/loose_lips_sink_ships.wav",
+    "text": "Loose lips sink ships.",
+    "category": "sentence",
+    "speaker": "Wikimedia Commons (US English)",
+    "type": "human",
+    "source": "File:En-us-loose lips sink ships.ogg"
+  },
+  {
+    "file": "words/sheep.wav",
+    "text": "sheep",
+    "category": "minimal_pair",
+    "focus": "i\u02d0",
+    "type": "human_native",
+    "source": "File:En-us-sheep.ogg"
+  },
+  {
+    "file": "words/ship.wav",
+    "text": "ship",
+    "category": "minimal_pair",
+    "focus": "\u026a",
+    "type": "human_native",
+    "source": "File:En-us-ship.ogg"
+  },
+  {
+    "file": "words/feel.wav",
+    "text": "feel",
+    "category": "minimal_pair",
+    "focus": "i\u02d0",
+    "type": "human_native",
+    "source": "File:En-us-feel.ogg"
+  },
+  {
+    "file": "words/fill.wav",
+    "text": "fill",
+    "category": "minimal_pair",
+    "focus": "\u026a",
+    "type": "human_native",
+    "source": "File:En-us-fill.ogg"
+  },
+  {
+    "file": "words/beat.wav",
+    "text": "beat",
+    "category": "minimal_pair",
+    "focus": "i\u02d0",
+    "type": "human_native",
+    "source": "File:En-us-beat.ogg"
+  },
+  {
+    "file": "words/bit.wav",
+    "text": "bit",
+    "category": "minimal_pair",
+    "focus": "\u026a",
+    "type": "human_native",
+    "source": "File:En-us-bit.ogg"
+  },
+  {
+    "file": "words/three.wav",
+    "text": "three",
+    "category": "minimal_pair",
+    "focus": "\u03b8",
+    "type": "human_native",
+    "source": "File:En-us-three.ogg"
+  },
+  {
+    "file": "words/tree.wav",
+    "text": "tree",
+    "category": "minimal_pair",
+    "focus": "t",
+    "type": "human_native",
+    "source": "File:En-us-tree.ogg"
+  },
+  {
+    "file": "words/think.wav",
+    "text": "think",
+    "category": "minimal_pair",
+    "focus": "\u03b8",
+    "type": "human_native",
+    "source": "File:En-us-think.ogg"
+  },
+  {
+    "file": "words/sink.wav",
+    "text": "sink",
+    "category": "minimal_pair",
+    "focus": "s",
+    "type": "human_native",
+    "source": "File:En-us-sink.ogg"
+  },
+  {
+    "file": "words/rice.wav",
+    "text": "rice",
+    "category": "minimal_pair",
+    "focus": "\u0279",
+    "type": "human_native",
+    "source": "File:En-us-rice.ogg"
+  },
+  {
+    "file": "words/lice.wav",
+    "text": "lice",
+    "category": "minimal_pair",
+    "focus": "l",
+    "type": "human_native",
+    "source": "File:LL-Q1860 (eng)-Vealhurl-lice.wav"
+  },
+  {
+    "file": "words/road.wav",
+    "text": "road",
+    "category": "minimal_pair",
+    "focus": "\u0279",
+    "type": "human_native",
+    "source": "File:En-us-road.ogg"
+  },
+  {
+    "file": "words/load.wav",
+    "text": "load",
+    "category": "minimal_pair",
+    "focus": "l",
+    "type": "human_native",
+    "source": "File:En-us-load.ogg"
+  },
+  {
+    "file": "words/right.wav",
+    "text": "right",
+    "category": "minimal_pair",
+    "focus": "\u0279",
+    "type": "human_native",
+    "source": "File:En-us-right.ogg"
+  },
+  {
+    "file": "words/light.wav",
+    "text": "light",
+    "category": "minimal_pair",
+    "focus": "l",
+    "type": "human_native",
+    "source": "File:En-us-light.ogg"
+  },
+  {
+    "file": "words/correct.wav",
+    "text": "correct",
+    "category": "lesson_word",
+    "focus": "\u0279",
+    "type": "human_native",
+    "source": "File:En-us-correct.ogg"
+  },
+  {
+    "file": "words/collect.wav",
+    "text": "collect",
+    "category": "lesson_word",
+    "focus": "l",
+    "type": "human_native",
+    "source": "File:En-us-collect.ogg"
+  },
+  {
+    "file": "words/very.wav",
+    "text": "very",
+    "category": "minimal_pair",
+    "focus": "v",
+    "type": "human_native",
+    "source": "File:En-us-very.ogg"
+  },
+  {
+    "file": "words/berry.wav",
+    "text": "berry",
+    "category": "minimal_pair",
+    "focus": "b",
+    "type": "human_native",
+    "source": "File:En-us-berry.ogg"
+  },
+  {
+    "file": "words/vine.wav",
+    "text": "vine",
+    "category": "minimal_pair",
+    "focus": "v",
+    "type": "human_native",
+    "source": "File:En-us-vine.ogg"
+  },
+  {
+    "file": "words/wine.wav",
+    "text": "wine",
+    "category": "minimal_pair",
+    "focus": "w",
+    "type": "human_native",
+    "source": "File:En-us-wine.ogg"
+  },
+  {
+    "file": "words/vest.wav",
+    "text": "vest",
+    "category": "minimal_pair",
+    "focus": "v",
+    "type": "human_native",
+    "source": "File:En-us-vest.ogg"
+  },
+  {
+    "file": "words/west.wav",
+    "text": "west",
+    "category": "minimal_pair",
+    "focus": "w",
+    "type": "human_native",
+    "source": "File:En-us-west.ogg"
+  },
+  {
+    "file": "words/mother.wav",
+    "text": "mother",
+    "category": "lesson_word",
+    "focus": "\u00f0",
+    "type": "human_native",
+    "source": "File:En-us-mother.ogg"
+  },
+  {
+    "file": "words/birthday.wav",
+    "text": "birthday",
+    "category": "lesson_word",
+    "focus": "\u03b8",
+    "type": "human_native",
+    "source": "File:En-us-birthday.ogg"
+  },
+  {
+    "file": "words/water.wav",
+    "text": "water",
+    "category": "lesson_word",
+    "focus": "w",
+    "type": "human_native",
+    "source": "File:En-us-water.ogg"
+  },
+  {
+    "file": "words/street.wav",
+    "text": "street",
+    "category": "lesson_word",
+    "focus": "str-",
+    "type": "human_native",
+    "source": "File:En-us-street.ogg"
+  },
+  {
+    "file": "words/strength.wav",
+    "text": "strength",
+    "category": "lesson_word",
+    "focus": "\u014b\u03b8",
+    "type": "human_native",
+    "source": "File:En-us-strength.ogg"
+  },
+  {
+    "file": "words/beautiful.wav",
+    "text": "beautiful",
+    "category": "lesson_word",
+    "focus": "stress",
+    "type": "human_native",
+    "source": "File:En-us-beautiful.ogg"
+  },
+  {
+    "file": "synthetic/syn_sheep.wav",
+    "text": "sheep",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_ship.wav",
+    "text": "ship",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_three.wav",
+    "text": "three",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_tree.wav",
+    "text": "tree",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_thin.wav",
+    "text": "thin",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_sin.wav",
+    "text": "sin",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_rice.wav",
+    "text": "rice",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_lice.wav",
+    "text": "lice",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_very.wav",
+    "text": "very",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_berry.wav",
+    "text": "berry",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_wine.wav",
+    "text": "wine",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_vine.wav",
+    "text": "vine",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_feel.wav",
+    "text": "feel",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_fill.wav",
+    "text": "fill",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_she_sells_seashells.wav",
+    "text": "she sells seashells by the seashore",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  },
+  {
+    "file": "synthetic/syn_cup_of_coffee.wav",
+    "text": "I would like a cup of coffee",
+    "category": "synthetic_control",
+    "type": "synthetic_espeak",
+    "speed": "normal"
+  }
+]

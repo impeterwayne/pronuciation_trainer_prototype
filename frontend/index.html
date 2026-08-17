@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pronunciation Trainer · Speech Scoring &amp; Phoneme Alignment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-container">
+    <div class="brand">
+      <div class="logo-mark">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+          <line x1="12" y1="19" x2="12" y2="22"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Pronunciation Trainer</h1>
+        <span class="sub">wav2vec2 CTC &middot; GOP Forced Alignment &middot; eSpeak G2P</span>
+      </div>
+    </div>
+    
+    <div class="header-right">
+      <span id="health" class="health-pill">
+        <span class="dot"></span>
+        <span class="label">Connecting&hellip;</span>
+      </span>
+    </div>
+  </div>
+</header>
+
+<div class="app-layout">
+
+  <!-- ------------------------------------------------- sidebar -->
+  <aside class="sidebar">
+    <div class="nav-tabs" role="tablist">
+      <button class="nav-tab active" id="tabSamples" data-tab="panelSamples">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+        <span>Test Samples</span>
+        <span class="tab-badge" id="sampleCount">0</span>
+      </button>
+      <button class="nav-tab" id="tabLessons" data-tab="panelLessons">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+        <span>Lessons</span>
+      </button>
+      <button class="nav-tab" id="tabCustom" data-tab="panelCustom">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span>Custom</span>
+      </button>
+    </div>
+
+    <!-- Tab 1: Test Samples Library -->
+    <section class="panel tab-panel" id="panelSamples">
+      <div class="panel-header">
+        <div>
+          <h2>Audio Test Library</h2>
+          <p class="panel-desc">Curated 16 kHz WAV samples for instant scoring.</p>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="sampleSearch" placeholder="Filter samples (e.g. sheep, tree, sentence)&hellip;" autocomplete="off">
+        <button id="clearSearchBtn" class="clear-btn hidden">&times;</button>
+      </div>
+
+      <div class="filter-pills" id="sampleFilterPills">
+        <button class="pill active" data-filter="sentence">✨ Sentences</button>
+        <button class="pill" data-filter="all">All</button>
+        <button class="pill" data-filter="minimal_pair">Minimal Pairs</button>
+        <button class="pill" data-filter="lesson_word">Words</button>
+        <button class="pill" data-filter="synthetic_control">Synthetic</button>
+      </div>
+
+      <div class="sample-list" id="sampleList">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <span>Loading sample audio library&hellip;</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 2: Lessons -->
+    <section class="panel tab-panel hidden" id="panelLessons">
+      <div class="panel-header">
+        <h2>Practice Lessons</h2>
+        <p class="panel-desc">Target phoneme contrasts &amp; difficulty levels.</p>
+      </div>
+      <div id="lessons" class="lessons-container">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <span>Loading practice lessons&hellip;</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Custom Input -->
+    <section class="panel tab-panel hidden" id="panelCustom">
+      <div class="panel-header">
+        <h2>Custom Phrase</h2>
+        <p class="panel-desc">Type any custom English text to assess.</p>
+      </div>
+      <textarea id="custom" rows="3" placeholder="Type any word, tongue-twister, or sentence&hellip;">She sells seashells by the seashore.</textarea>
+      <div class="controls" style="margin-top:12px">
+        <button id="setCustom" class="btn btn-primary">Set as Target</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- ------------------------------------------------- main -->
+  <main class="main-content">
+    
+    <!-- Target Box -->
+    <section class="panel target-panel" id="targetSection">
+      <div class="target-header">
+        <div class="target-badge">
+          <span class="pulse-indicator"></span>
+          <span>Target Phrase</span>
+        </div>
+        <span class="drop-hint">Drop .wav file here or upload below</span>
+      </div>
+
+      <div class="target-text" id="targetText">She sells seashells by the seashore.</div>
+      <div class="target-ipa-row">
+        <span class="ipa-label">Reference IPA</span>
+        <div class="target-ipa ipa" id="targetIpa">/ ʃiː sˈɛlz sˈiːʃɛlz baɪ ðə sˈiːʃɔːɹ /</div>
+      </div>
+
+      <div class="action-toolbar">
+        <div class="audio-controls">
+          <button id="playIdeal" class="btn btn-secondary" title="Listen to standard reference audio">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Ideal Audio</span>
+          </button>
+          <button id="playSlow" class="btn btn-secondary" title="Listen at half speed">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Slow Pace</span>
+          </button>
+        </div>
+
+        <div class="input-controls">
+          <button id="record" class="btn btn-rec" title="Record microphone speech">
+            <span class="rec-dot"></span>
+            <span id="recLabel">Record Mic</span>
+          </button>
+          <button id="uploadAudioBtn" class="btn btn-secondary" title="Upload local audio file (WAV, MP3, OGG)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span>Upload Audio</span>
+          </button>
+          <input type="file" id="audioFileInput" accept="audio/*,.wav,.ogg,.mp3,.webm" style="display:none">
+          <button id="playMine" class="btn btn-secondary" disabled title="Play back the scored audio">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Play Scored Audio</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="status-bar">
+        <div class="meter-track" id="meterTrack"><i id="level"></i></div>
+        <div class="status-text" id="status">Ready. Select a sample from the library or record your voice.</div>
+      </div>
+    </section>
+
+    <!-- Assessment Results Section -->
+    <section class="panel results-panel hidden" id="results">
+      <div class="results-header">
+        <div>
+          <h2>Assessment Report</h2>
+          <span class="results-sub" id="testedSampleBadge"></span>
+        </div>
+      </div>
+
+      <div class="score-overview">
+        <div class="gauge-card">
+          <div class="gauge">
+            <svg width="124" height="124" viewBox="0 0 124 124">
+              <circle cx="62" cy="62" r="52" class="gauge-bg" stroke-width="11"/>
+              <circle id="gaugeArc" cx="62" cy="62" r="52" class="gauge-fill" stroke-width="11"
+                      stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+            </svg>
+            <div class="gauge-inner">
+              <div class="val" id="overall">0</div>
+              <div class="score-scale">/100</div>
+            </div>
+          </div>
+          <div class="gauge-label">Overall Score</div>
+        </div>
+
+        <div class="metrics-card">
+          <div class="bar-row">
+            <span class="label">Phoneme Accuracy</span>
+            <div class="bar-track"><i id="barAccuracy"></i></div>
+            <span class="num" id="numAccuracy">0%</span>
+          </div>
+          <div class="bar-row">
+            <span class="label">Completeness</span>
+            <div class="bar-track"><i id="barCompleteness"></i></div>
+            <span class="num" id="numCompleteness">0%</span>
+          </div>
+          <div class="bar-row">
+            <span class="label">Speech Fluency</span>
+            <div class="bar-track"><i id="barFluency"></i></div>
+            <span class="num" id="numFluency">0%</span>
+          </div>
+          <div class="bar-row">
+            <span class="label">Vowels Quality</span>
+            <div class="bar-track"><i id="barVowels"></i></div>
+            <span class="num" id="numVowels">0%</span>
+          </div>
+          <div class="bar-row">
+            <span class="label">Consonants Quality</span>
+            <div class="bar-track"><i id="barConsonants"></i></div>
+            <span class="num" id="numConsonants">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Word Tiles -->
+      <div class="section-title">
+        <span>Word-by-Word Analysis</span>
+        <span class="hint-text">Click a word to inspect individual phonemes and acoustic confidence</span>
+      </div>
+      <div class="words-container" id="words"></div>
+
+      <!-- Phoneme Detail Panel -->
+      <div class="phoneme-detail-card hidden" id="detail"></div>
+
+      <!-- Phoneme Alignment Comparison -->
+      <div class="phoneme-diff-card">
+        <div class="diff-row">
+          <span class="diff-tag ref">Target IPA</span>
+          <code class="ipa" id="refIpa"></code>
+        </div>
+        <div class="diff-row">
+          <span class="diff-tag hyp">Acoustic Model Heard</span>
+          <code class="ipa" id="hypIpa"></code>
+        </div>
+        <div id="meta" class="meta-note"></div>
+      </div>
+
+      <div class="legend-bar">
+        <div class="legend-items">
+          <span class="legend-item g">Good (&ge; 80)</span>
+          <span class="legend-item f">Fair (60&ndash;79)</span>
+          <span class="legend-item p">Needs Work (&lt; 60)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Coach Hints Panel -->
+    <section class="panel coach-panel hidden" id="coach">
+      <div class="panel-header">
+        <div class="coach-title-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--fair)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <h2>Pronunciation Coach &amp; Actionable Tips</h2>
+        </div>
+      </div>
+      <div class="hints-grid" id="hints"></div>
+    </section>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

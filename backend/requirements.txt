@@ -1,0 +1,18 @@
+# Web
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+
+# G2P (text -> IPA) via espeak-ng
+phonemizer>=3.3.0
+
+# Phoneme ASR (user audio -> IPA)
+# NOTE: install torch first from the CPU wheel index, see README:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.2.0
+transformers>=4.44.0
+huggingface_hub>=0.24.0
+
+# Audio IO
+soundfile>=0.12.1
+numpy>=1.26.0
