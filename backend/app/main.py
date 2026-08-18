@@ -11,13 +11,14 @@ from dataclasses import asdict
 from pathlib import Path
 from threading import Lock
 
-from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
-from . import asr, lessons, tts
+from . import asr, lessons, neural_tts, openai_client, tts
 from .audio import AudioError, load_audio, to_wav_bytes
 from .config import find_espeak_exe, find_espeak_library, settings
 from .g2p import G2PUnavailable, en_inventory, phonemize
@@ -89,6 +90,19 @@ def health() -> dict:
         "asr_loaded": asr.is_loaded(),
         "lang": settings.lang,
         "device": settings.device,
+        "omnivoice": {
+            "url": settings.omnivoice_url,
+            "up": neural_tts.available(),
+            "model": settings.omnivoice_model,
+            "voices": neural_tts.VOICES,
+            "default_voice": settings.omnivoice_voice,
+            "default_description": settings.omnivoice_description,
+        },
+        "openai": {
+            # Only ever reports *whether* a server-side key exists, never its value.
+            "env_key": openai_client.resolve_key(None) is not None,
+            "chat_model": settings.openai_chat_model,
+        },
         "thresholds": {"good": settings.good_threshold, "fair": settings.fair_threshold},
     }
 
@@ -116,9 +130,40 @@ def api_phonemize(req: PhonemizeRequest) -> dict:
 def api_tts(
     text: str = Query(..., max_length=MAX_TEXT_CHARS),
     speed: str = Query("normal", pattern="^(normal|slow)$"),
+    engine: str = Query("auto", pattern="^(auto|espeak|omnivoice)$"),
     voice: str | None = None,
+    description: str | None = Query(None, max_length=200),
 ) -> Response:
-    """The 'ideal' audio: espeak-ng speaking the target, at full or half pace."""
+    """The 'ideal' audio for the target phrase, at full or half pace.
+
+    Two engines, both local. `espeak` is the always-available formant synthesiser:
+    phonetically exact and instant, but unmistakably robotic. `omnivoice` is the
+    neural voice a learner can actually imitate for rhythm and vowel colour.
+    `auto` (the default) uses OmniVoice when its server answers and falls back to
+    espeak otherwise - including mid-request, so the button never dies.
+
+    `voice` is interpreted by whichever engine runs: an espeak voice name
+    ("en-us", "en-gb") or an OmniVoice preset ("nova", "onyx", ...). `description`
+    is OmniVoice-only voice design ("female, british accent, young adult").
+    """
+    # `auto` gates on the cached /health probe first: a URL pointing at a host that
+    # blackholes would otherwise burn the full synthesis timeout before falling back.
+    # An explicit `omnivoice` always tries, so the caller sees the real error.
+    if engine == "omnivoice" or (engine == "auto" and neural_tts.available()):
+        try:
+            wav = neural_tts.speech(text, voice=voice, speed=speed,
+                                    description=description)
+            return Response(content=wav, media_type="audio/wav", headers={
+                "Cache-Control": "public, max-age=86400",
+                "X-TTS-Engine": f"omnivoice:{settings.omnivoice_model}",
+            })
+        except neural_tts.NeuralTTSUnavailable as exc:
+            if engine == "omnivoice":
+                raise HTTPException(503, str(exc)) from exc
+            # auto: degrade to espeak rather than leaving the learner with silence
+            print(f"[tts] OmniVoice unavailable, falling back to espeak: {exc}")
+            voice = None  # an OmniVoice preset name means nothing to espeak
+
     rate = settings.tts_speed_slow if speed == "slow" else settings.tts_speed_normal
     gap = 8 if speed == "slow" else 0
     try:
@@ -128,8 +173,26 @@ def api_tts(
     return Response(
         content=wav,
         media_type="audio/wav",
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={"Cache-Control": "public, max-age=86400", "X-TTS-Engine": "espeak"},
     )
+
+
+@app.get("/api/tts/voices")
+def api_tts_voices() -> dict:
+    """OmniVoice presets, asked of the server when it is up."""
+    return {"up": neural_tts.available(), "voices": neural_tts.voices()}
+
+
+@app.post("/api/openai/verify")
+def api_openai_verify(x_openai_key: str | None = Header(None)) -> dict:
+    """Check a key before the user commits to it. Nothing is stored server-side."""
+    key = openai_client.resolve_key(x_openai_key)
+    if not key:
+        raise HTTPException(400, "no key supplied")
+    try:
+        return openai_client.verify(key)
+    except openai_client.OpenAIError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 @app.get("/api/recording/{rec_id}")
@@ -152,8 +215,16 @@ async def api_assess(
     audio: UploadFile = File(...),
     text: str = Form(...),
     lang: str | None = Form(None),
+    coach: bool = Form(True),
+    x_openai_key: str | None = Header(None),
 ) -> dict:
-    """Score a recording against a target phrase."""
+    """Score a recording against a target phrase.
+
+    Scoring itself is entirely local. If a key is present and `coach` is on, the
+    *already measured* per-phone verdicts are additionally sent to an LLM, which
+    rewrites them as articulation advice under `coach_tips`. The rule-based
+    `feedback` list is always present regardless, so the UI has something to show.
+    """
     if len(text) > MAX_TEXT_CHARS:
         raise HTTPException(400, f"text longer than {MAX_TEXT_CHARS} characters")
 
@@ -192,6 +263,18 @@ async def api_assess(
         "good": settings.good_threshold,
         "fair": settings.fair_threshold,
     }
+
+    key = openai_client.resolve_key(x_openai_key) if coach else None
+    if key:
+        try:
+            tips = await run_in_threadpool(openai_client.coach, payload, key)
+            if tips:
+                payload["coach_tips"] = tips
+                payload["coach_model"] = settings.openai_chat_model
+        except openai_client.OpenAIError as exc:
+            # A coaching failure must never sink an otherwise valid assessment.
+            payload["coach_error"] = str(exc)
+
     return payload
 
 

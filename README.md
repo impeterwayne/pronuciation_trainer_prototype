@@ -6,6 +6,11 @@ learner's audio, and forced alignment turns the two into a per-phoneme score.
 
 Everything runs locally. No API keys, no per-request cost.
 
+Two optional add-ons are configured from the UI, and neither changes a single score:
+a local **OmniVoice** server, for a reference voice that sounds human instead of
+robotic, and an **OpenAI** key, for the wording of the feedback. Only the second one
+leaves the machine. See [Optional extras](#optional-extras) below.
+
 ---
 
 ## What each library actually does
@@ -17,7 +22,7 @@ learner's speech, and a fourth has to compare the two:
 | Stage | Component | Output |
 |---|---|---|
 | Reference phonemes | `phonemizer` driving `espeak-ng` | `sheep` → `/ʃˈiːp/` |
-| Ideal audio | `espeak-ng` CLI (`-w out.wav`) | reference WAV, normal + half speed |
+| Ideal audio | `espeak-ng` CLI (`-w out.wav`), or a local OmniVoice server | reference WAV, normal + half speed |
 | Learner phonemes | `facebook/wav2vec2-lv-60-espeak-cv-ft`, decoding masked to the en-us inventory | `/ʃ ɪ p/` + frame posteriors |
 | Where each phone is | CTC forced alignment | per-phone time span in the recording |
 | Score | GOP × edit alignment | per-phone / per-word / overall |
@@ -84,7 +89,9 @@ set `PT_EAGER_LOAD=1` to pay that at startup instead.
 |---|---|---|
 | `GET` | `/api/health` | espeak paths, model status, thresholds |
 | `POST` | `/api/phonemize` | `{text}` → reference IPA, per word |
-| `GET` | `/api/tts?text=&speed=normal\|slow` | ideal audio (WAV) |
+| `GET` | `/api/tts?text=&speed=normal\|slow&engine=auto\|espeak\|omnivoice` | ideal audio (WAV) |
+| `GET` | `/api/tts/voices` | OmniVoice presets + whether its server is up |
+| `POST` | `/api/openai/verify` | check an OpenAI key (header `X-OpenAI-Key`) |
 | `POST` | `/api/assess` | multipart `audio` + `text` → full assessment |
 | `GET` | `/api/recording/{id}` | the scored recording, for word-level playback |
 | `GET` | `/api/lessons`, `/api/lessons/{id}` | practice content (`?with_ipa=1` for IPA) |
@@ -127,6 +134,97 @@ curl -X POST http://127.0.0.1:8000/api/assess \
 `status` is `good` (heard correctly), `sub` (heard as something else — `heard` names
 it) or `missing` (dropped). `start_ms`/`end_ms` index into `/api/recording/{id}`,
 which is why the frontend can replay a single phoneme the learner produced.
+
+---
+
+## Optional extras
+
+### Why the eSpeak reference audio sounds robotic
+
+espeak-ng is a **formant synthesiser**: it builds each phone from scratch out of
+filtered buzz and noise, from a rule table. It never had a human voice to copy —
+there are no recorded speech units anywhere in it. That is exactly why it was chosen
+for the reference:
+
+* it pronounces *every* phone the dictionary says, with no reduction, no elision,
+  no assimilation, so `/ʃ/` in "she" is unmistakably `/ʃ/`;
+* at half speed it still articulates cleanly, because nothing is being stretched —
+  the phones are simply generated longer;
+* it is the same engine that produced the target IPA, so audio and reference cannot
+  disagree;
+* it is free, offline, instant, and about 12 MB.
+
+The cost is that it sounds like a 1985 speech synthesiser, and a learner cannot
+imitate rhythm, vowel colour, or intonation from it. So the two jobs are split:
+espeak stays the *phonetic* reference; OmniVoice becomes the *imitation* model.
+
+### Neural reference audio: OmniVoice
+
+[`k2-fsa/OmniVoice`](https://github.com/k2-fsa/OmniVoice) is an Apache-2.0 zero-shot
+TTS covering 600+ languages. This app talks to
+[`omnivoice-server`](https://github.com/maemreyo/omnivoice-server), which wraps it in
+an OpenAI-compatible `POST /v1/audio/speech`:
+
+```bash
+pip install omnivoice-server      # torch must already be installed
+omnivoice-server                  # 127.0.0.1:8880  (--device cuda if you have one)
+```
+
+That is the whole setup — no key, no account, nothing leaves the machine, so the
+"everything runs locally" promise still holds. The trainer probes `/health` and lights
+up the voice controls when it answers.
+
+Pick a **preset** (`alloy`, `nova`, `onyx`, `cedar`, `marin`, `verse`, …) or type a
+**voice design** string — comma-separated attributes like `female, british accent,
+young adult`, which map to the server's `instructions` field and outrank the preset.
+Note that this is *not* free prose: OmniVoice reads attributes, not delivery notes,
+which is why "slow" here is a numeric `speed` (0.7) rather than an instruction to
+speak slowly.
+
+Caveats worth knowing before you install it: real-time factor is ~4.9 on CPU
+(≈5 s of compute per second of audio) versus ~0.2 on CUDA, MPS is broken, and the
+wrapper is explicitly early-development software. The first play of a phrase is
+therefore slow on CPU — after that it is served from
+`backend/.cache/tts-omnivoice/`, keyed by text + voice + description + speed.
+
+espeak remains the fallback everywhere: if the server is down, mid-synthesis, or just
+never installed, `engine=auto` serves espeak and the button never dies.
+
+### AI coach: OpenAI
+
+Enter a key in the UI (gear icon, top right). Scoring is untouched — wav2vec2 still
+runs locally and the phone-level numbers are identical with or without a key. All it
+changes is the wording of the tips: `gpt-4o-mini` rewrites the *measured* per-phone
+errors as articulation advice, instead of the one-template-per-error-type list.
+
+The LLM is deliberately **not** asked to judge pronunciation — it never hears the
+audio. It receives only the phones this app already scored below threshold, plus a
+system prompt telling it not to invent errors that are not in the data. Diagnosis
+stays with the acoustic model; the LLM only does the phrasing. If the call fails, the
+rule-based tips are shown instead.
+
+**Where the key lives:** per request, in an `X-OpenAI-Key` header. The backend never
+writes it to disk, never logs it, and never returns it — `/api/health` reports only
+*whether* a server-side key exists. The UI keeps it in the browser's `localStorage`,
+which is the usual trade-off for a local tool: convenient, but readable by anything
+else running on that origin. On a shared machine, set `OPENAI_API_KEY` in the backend
+environment instead and leave the UI field blank.
+
+### Environment overrides
+
+| Variable | Default |
+|---|---|
+| `PT_OMNIVOICE_URL` | `http://127.0.0.1:8880/v1` |
+| `PT_OMNIVOICE_MODEL` | `omnivoice` |
+| `PT_OMNIVOICE_VOICE` | `nova` |
+| `PT_OMNIVOICE_DESCRIPTION` | *(empty — use the preset)* |
+| `PT_OMNIVOICE_SLOW_SPEED` | `0.7` |
+| `OMNIVOICE_API_KEY` | *(empty — only if started with `--api-key`)* |
+| `OPENAI_API_KEY`, `OPENAI_BASE_URL` | *(unset)*, `https://api.openai.com/v1` |
+| `PT_OPENAI_CHAT_MODEL` | `gpt-4o-mini` |
+
+Neither integration adds a Python dependency — both are `urllib` against a documented
+HTTP endpoint, not an SDK.
 
 ---
 
@@ -229,7 +327,9 @@ standard benchmark for this task.
 backend/app/
   config.py    espeak discovery (portable vendor/ copy, data path) + settings
   g2p.py       phonemizer → per-word reference phones
-  tts.py       espeak-ng CLI → ideal audio
+  tts.py       espeak-ng CLI → ideal audio (always available)
+  neural_tts.py     optional: OmniVoice server → natural ideal audio
+  openai_client.py  optional: LLM coaching
   asr.py       wav2vec2 phoneme CTC → phones + posteriors
   align.py     CTC forced alignment + weighted Needleman-Wunsch
   scoring.py   GOP × edit alignment → phone/word/overall scores

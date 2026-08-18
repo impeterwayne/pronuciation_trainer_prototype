@@ -3,7 +3,9 @@
 espeak-ng is a formant synthesiser: the output is robotic but *phonetically exact*,
 which is what a pronunciation model wants -- the learner hears the target phones,
 including at half speed, with no natural-speech reduction blurring the contrast.
-Swap this module for a neural TTS later; the API contract does not change.
+`neural_tts.speech` (OmniVoice) is the natural-sounding alternative when its
+server is up; this module stays the fallback, and the contract is the same either
+way -- text in, WAV bytes out.
 """
 
 from __future__ import annotations

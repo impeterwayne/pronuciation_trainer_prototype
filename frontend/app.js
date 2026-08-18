@@ -98,6 +98,58 @@ function setStatus(msg, isError = false) {
   el.classList.toggle("err", isError);
 }
 
+/* ------------------------------------------------------------------ settings
+ *
+ * Two independent optional layers, both off by default:
+ *   - OmniVoice, a local neural TTS server, replaces eSpeak for the ideal audio.
+ *     Keyless: it either answers on localhost or it does not.
+ *   - OpenAI, for the coach wording only. Its key lives in localStorage and rides
+ *     along in an X-OpenAI-Key header; the backend never persists it.
+ * With neither, the app runs exactly as it did before.
+ */
+
+const SETTINGS_KEY = "pt.settings.v1";
+
+const SETTINGS = {
+  openaiKey: "",
+  neuralTts: true,
+  aiCoach: true,
+  ttsVoice: "nova",
+  voiceDesc: "",
+};
+
+let SERVER = {
+  omnivoice: { url: "", up: false, voices: [], default_voice: "nova", default_description: "" },
+  openai: { env_key: false, chat_model: "" },
+};
+
+function loadSettings() {
+  try {
+    Object.assign(SETTINGS, JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}"));
+  } catch (_) { /* corrupt entry - fall back to defaults */ }
+}
+
+function saveSettings() {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(SETTINGS));
+  } catch (_) { /* private mode: settings just won't survive a reload */ }
+}
+
+/** OmniVoice is usable: enabled here, and its server answered the last probe. */
+function neuralVoiceOn() {
+  return SETTINGS.neuralTts && SERVER.omnivoice.up;
+}
+
+/** A coach key is reachable - ours, or one in the server's environment. */
+function coachOn() {
+  return SETTINGS.aiCoach && (Boolean(SETTINGS.openaiKey.trim()) || SERVER.openai.env_key);
+}
+
+function authHeaders(extra = {}) {
+  const key = SETTINGS.openaiKey.trim();
+  return key ? { ...extra, "X-OpenAI-Key": key } : { ...extra };
+}
+
 async function api(path, opts) {
   const cleanPath = path.startsWith("/") ? path : "/" + path;
   const res = await fetch(API + cleanPath, opts);
@@ -161,8 +213,53 @@ function playUrl(url, triggerBtn = null) {
   });
 }
 
-function playIdeal(text, speed = "normal") {
-  playUrl(`${API}/api/tts?speed=${speed}&text=${encodeURIComponent(text)}`);
+/* Reference ("ideal") audio.
+ *
+ * Fetched rather than assigned straight to <audio src> so the engine actually used
+ * can be read back off the X-TTS-Engine header - `auto` silently falls back to
+ * eSpeak when the OmniVoice server is down, and the learner should be told which
+ * voice they just heard. The previous blob URL is revoked on each call.
+ */
+let lastIdealUrl = null;
+
+async function playIdeal(text, speed = "normal") {
+  const neural = neuralVoiceOn();
+  const params = new URLSearchParams({
+    speed,
+    engine: neural ? "auto" : "espeak",
+    text,
+  });
+  if (neural) {
+    params.set("voice", SETTINGS.ttsVoice);
+    if (SETTINGS.voiceDesc.trim()) params.set("description", SETTINGS.voiceDesc.trim());
+  }
+
+  // On CPU, OmniVoice runs at roughly 5x real time on a first play; the disk cache
+  // makes every replay instant, so only warn the first time round.
+  if (neural) setStatus("Synthesising reference audio with OmniVoice…");
+
+  try {
+    const res = await api(`/api/tts?${params}`);
+    const engine = res.headers.get("X-TTS-Engine") || "espeak";
+    const url = URL.createObjectURL(await res.blob());
+
+    if (lastIdealUrl) URL.revokeObjectURL(lastIdealUrl);
+    lastIdealUrl = url;
+    playUrl(url);
+
+    if (neural) {
+      if (engine.startsWith("omnivoice")) {
+        const how = SETTINGS.voiceDesc.trim() || `voice “${SETTINGS.ttsVoice}”`;
+        setStatus(`Reference audio: OmniVoice · ${how}`);
+      } else {
+        SERVER.omnivoice.up = false;
+        renderAiPill();
+        setStatus("OmniVoice server not answering — played the eSpeak reference instead.");
+      }
+    }
+  } catch (e) {
+    setStatus("Could not produce reference audio: " + e.message, true);
+  }
 }
 
 /** Play a slice of the scored recording (word-level playback). */
@@ -343,9 +440,12 @@ async function submit(blob, sampleLabel = "") {
   const fd = new FormData();
   fd.append("audio", blob, "recording.wav");
   fd.append("text", TARGET);
+  fd.append("coach", String(coachOn()));
 
   try {
-    const payload = await (await api("/api/assess", { method: "POST", body: fd })).json();
+    const payload = await (await api("/api/assess", {
+      method: "POST", body: fd, headers: authHeaders(),
+    })).json();
     THRESHOLDS = payload.thresholds || THRESHOLDS;
     LAST = payload;
     await loadMyRecording(payload.recording_id);
@@ -430,17 +530,35 @@ function render(p, sampleLabel = "") {
     ? ""
     : "Note: forced alignment failed (recording shorter than the phrase) — scores use recognition only.";
 
-  // Hints
+  // Hints. `coach_tips` is the LLM rewrite of the same measurements; when it is
+  // absent (no key, or the call failed) the rule-based list still stands on its own.
   const hints = $("hints");
   hints.innerHTML = "";
-  if (p.feedback && p.feedback.length) {
+  const ai = p.coach_tips && p.coach_tips.length ? p.coach_tips : null;
+  const tips = ai || p.feedback || [];
+
+  if (tips.length) {
     $("coach").classList.remove("hidden");
-    p.feedback.forEach((h) => {
+    const note = document.createElement("div");
+    note.className = "hint-source";
+    note.textContent = ai
+      ? `AI coach · ${p.coach_model || "openai"} · written from the per-phone scores below`
+      : "Rule-based tips from the phoneme alignment";
+    hints.appendChild(note);
+
+    tips.forEach((h) => {
       const el = document.createElement("div");
-      el.className = "hint-item";
+      el.className = ai ? "hint-item ai" : "hint-item";
       el.textContent = h;
       hints.appendChild(el);
     });
+
+    if (p.coach_error) {
+      const err = document.createElement("div");
+      err.className = "hint-source";
+      err.textContent = `AI coach unavailable: ${p.coach_error}`;
+      hints.appendChild(err);
+    }
   } else {
     $("coach").classList.add("hidden");
   }
@@ -679,6 +797,12 @@ async function checkHealth() {
   if (!el) return;
   try {
     const h = await (await api(`/api/health?t=${Date.now()}`)).json();
+    if (h.omnivoice) SERVER.omnivoice = h.omnivoice;
+    if (h.openai) SERVER.openai = h.openai;
+    if (h.omnivoice || h.openai) {
+      populateVoices();
+      renderAiPill();
+    }
     if (h.status === "ok") {
       el.className = "health-pill ok";
       el.querySelector(".label").textContent = "Ready " + (h.asr_loaded ? "(model warm)" : "(model ready)");
@@ -854,13 +978,174 @@ function setupControls() {
   }
 }
 
+/* ------------------------------------------------------------ settings UI */
+
+function renderAiPill() {
+  const pill = $("aiPill");
+  if (!pill) return;
+
+  const parts = [];
+  if (neuralVoiceOn()) parts.push("voice");
+  if (coachOn()) parts.push("coach");
+
+  pill.className = "ai-pill " + (parts.length ? "on" : "off");
+  pill.querySelector(".label").textContent = parts.length
+    ? "AI " + parts.join(" + ")
+    : "eSpeak only";
+
+  pill.title = parts.length
+    ? [
+        neuralVoiceOn() ? `Reference voice: OmniVoice at ${SERVER.omnivoice.url}` : null,
+        coachOn() ? `Coach: ${SERVER.openai.chat_model}` : null,
+      ].filter(Boolean).join(" · ")
+    : "eSpeak reference audio and rule-based tips - click to configure";
+}
+
+function renderOmniState() {
+  const dot = $("omniState");
+  const url = $("omniUrl");
+  const help = $("omniHelp");
+  if (!dot) return;
+
+  const up = SERVER.omnivoice.up;
+  dot.className = "server-dot " + (up ? "up" : "down");
+  dot.title = up ? "OmniVoice server responding" : "No response from the OmniVoice server";
+  url.textContent = (up ? "up · " : "down · ") + (SERVER.omnivoice.url || "not configured");
+  if (help) help.classList.toggle("hidden", up);
+}
+
+function populateVoices() {
+  const sel = $("ttsVoice");
+  if (!sel) return;
+  const voices = SERVER.omnivoice.voices && SERVER.omnivoice.voices.length
+    ? SERVER.omnivoice.voices
+    : ["alloy", "nova", "onyx", "shimmer"];
+  sel.innerHTML = "";
+  voices.forEach((v) => {
+    const opt = document.createElement("option");
+    opt.value = v;
+    opt.textContent = v;
+    sel.appendChild(opt);
+  });
+  sel.value = voices.includes(SETTINGS.ttsVoice) ? SETTINGS.ttsVoice : voices[0];
+
+  const note = $("modelNote");
+  if (note && SERVER.openai.chat_model) {
+    note.textContent =
+      `Coach model: ${SERVER.openai.chat_model} — override with PT_OPENAI_CHAT_MODEL.`;
+  }
+  renderOmniState();
+}
+
+function fillSettingsForm() {
+  $("apiKey").value = SETTINGS.openaiKey;
+  $("optNeuralTts").checked = SETTINGS.neuralTts;
+  $("optAiCoach").checked = SETTINGS.aiCoach;
+  $("voiceDesc").value = SETTINGS.voiceDesc;
+  populateVoices();
+
+  const status = $("keyStatus");
+  status.className = "key-status";
+  status.textContent = SETTINGS.openaiKey.trim()
+    ? "Key saved in this browser."
+    : SERVER.openai.env_key
+      ? "Using OPENAI_API_KEY from the server environment."
+      : "No key - rule-based tips only.";
+}
+
+function setupSettings() {
+  const modal = $("settingsModal");
+  if (!modal) return;
+
+  // Re-probe on open: the user may have just started the OmniVoice server.
+  const open = async () => {
+    fillSettingsForm();
+    modal.classList.remove("hidden");
+    await checkHealth();
+    renderOmniState();
+  };
+  const close = () => modal.classList.add("hidden");
+
+  $("openSettings").onclick = open;
+  $("aiPill").onclick = open;
+  $("closeSettings").onclick = close;
+  modal.onclick = (e) => { if (e.target === modal) close(); };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) close();
+  });
+
+  $("toggleKeyVis").onclick = () => {
+    const input = $("apiKey");
+    const hidden = input.type === "password";
+    input.type = hidden ? "text" : "password";
+    $("toggleKeyVis").textContent = hidden ? "Hide" : "Show";
+  };
+
+  $("clearKey").onclick = () => {
+    $("apiKey").value = "";
+    SETTINGS.openaiKey = "";
+    saveSettings();
+    fillSettingsForm();
+    renderAiPill();
+  };
+
+  $("verifyKey").onclick = async () => {
+    const status = $("keyStatus");
+    const typed = $("apiKey").value.trim();
+    if (!typed && !SERVER.openai.env_key) {
+      status.className = "key-status err";
+      status.textContent = "Enter a key first.";
+      return;
+    }
+    status.className = "key-status";
+    status.textContent = "Checking…";
+    try {
+      // Test what is typed right now, not what was last saved.
+      const res = await api("/api/openai/verify", {
+        method: "POST",
+        headers: typed ? { "X-OpenAI-Key": typed } : {},
+      });
+      const info = await res.json();
+      status.className = "key-status ok";
+      status.textContent = info.chat_model_available
+        ? `Key works — ${info.chat_model} available.`
+        : `Key works, but this account cannot see ${info.chat_model}.`;
+    } catch (e) {
+      status.className = "key-status err";
+      status.textContent = e.message;
+    }
+  };
+
+  $("saveSettings").onclick = () => {
+    SETTINGS.openaiKey = $("apiKey").value.trim();
+    SETTINGS.neuralTts = $("optNeuralTts").checked;
+    SETTINGS.aiCoach = $("optAiCoach").checked;
+    SETTINGS.ttsVoice = $("ttsVoice").value;
+    SETTINGS.voiceDesc = $("voiceDesc").value.trim();
+    saveSettings();
+    renderAiPill();
+    close();
+
+    const on = [
+      neuralVoiceOn() ? "OmniVoice reference audio" : null,
+      coachOn() ? "AI coach" : null,
+    ].filter(Boolean);
+    setStatus(on.length
+      ? "Settings saved · " + on.join(" + ")
+      : "Settings saved. Running on eSpeak and rule-based tips.");
+  };
+}
+
 /* ------------------------------------------------------------------ init */
 
 window.addEventListener("DOMContentLoaded", () => {
+  loadSettings();
   setupTabs();
   setupFilters();
   setupDragAndDrop();
   setupControls();
+  setupSettings();
+  renderAiPill();
   checkHealth();
   loadSamples();
   loadLessons();

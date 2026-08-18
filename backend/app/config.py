@@ -19,6 +19,12 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv(PROJECT_ROOT / ".env")
+except ImportError:
+    pass
+
 # A portable copy extracted with `msiexec /a` (see scripts/setup_windows.ps1)
 # takes priority: it needs no admin rights and pins the version.
 VENDOR_ESPEAK = PROJECT_ROOT / "vendor" / "eSpeak NG"
@@ -126,6 +132,24 @@ class Settings:
     frame_ms: float = 20.0
     # Load the ASR model at startup instead of on first request.
     eager_load: bool = os.environ.get("PT_EAGER_LOAD", "0") == "1"
+
+    # Optional neural reference audio: a local OmniVoice server (`omnivoice-server`,
+    # OpenAI-compatible /v1/audio/speech). Keyless and offline by default, so the
+    # espeak fallback is the only thing standing between this and no dependency.
+    omnivoice_url: str = os.environ.get("PT_OMNIVOICE_URL", "http://127.0.0.1:8880/v1")
+    omnivoice_model: str = os.environ.get("PT_OMNIVOICE_MODEL", "omnivoice")
+    omnivoice_voice: str = os.environ.get("PT_OMNIVOICE_VOICE", "nova")
+    # OmniVoice's voice *design* string - comma-separated attributes, e.g.
+    # "female, us accent, young adult". Outranks the voice preset when set.
+    omnivoice_description: str = os.environ.get("PT_OMNIVOICE_DESCRIPTION", "")
+    omnivoice_slow_speed: float = float(os.environ.get("PT_OMNIVOICE_SLOW_SPEED", "0.7"))
+    # Only needed if the server was started with --api-key.
+    omnivoice_api_key: str = os.environ.get("OMNIVOICE_API_KEY", "")
+
+    # Optional LLM coaching. The key is normally supplied per-request from the UI;
+    # this env var is the fallback for headless use and is never sent to the browser.
+    openai_base_url: str = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
+    openai_chat_model: str = os.environ.get("PT_OPENAI_CHAT_MODEL", "gpt-4o-mini")
 
     # Scoring thresholds (also used by the frontend for colouring)
     good_threshold: int = 80

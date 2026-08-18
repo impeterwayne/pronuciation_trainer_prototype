@@ -28,10 +28,20 @@
     </div>
     
     <div class="header-right">
+      <span id="aiPill" class="ai-pill off" title="Optional AI features">
+        <span class="dot"></span>
+        <span class="label">AI off</span>
+      </span>
       <span id="health" class="health-pill">
         <span class="dot"></span>
         <span class="label">Connecting&hellip;</span>
       </span>
+      <button id="openSettings" class="icon-btn" title="Settings — voice &amp; AI coach" aria-label="Settings">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+      </button>
     </div>
   </div>
 </header>
@@ -265,6 +275,97 @@
       <div class="hints-grid" id="hints"></div>
     </section>
   </main>
+</div>
+
+<!-- ------------------------------------------------- settings -->
+<div class="modal-backdrop hidden" id="settingsModal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="modal-head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button id="closeSettings" class="icon-btn" aria-label="Close">&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <section class="setting-group">
+        <h3>Reference voice <span class="opt-tag">OmniVoice</span></h3>
+        <p class="setting-desc">
+          eSpeak is a <em>formant synthesiser</em> &mdash; it builds every sound from a rule
+          table with no recorded human speech in it, which is why it is phonetically exact
+          and completely robotic. <strong>OmniVoice</strong> runs locally too, but sounds
+          like a person, so rhythm and vowel colour are worth imitating. eSpeak stays the
+          fallback whenever the server is not up.
+        </p>
+
+        <div class="server-line">
+          <span id="omniState" class="server-dot"></span>
+          <code id="omniUrl">&mdash;</code>
+        </div>
+        <p class="setting-note" id="omniHelp">
+          Not running? <code>pip install omnivoice-server</code> then
+          <code>omnivoice-server</code> (add <code>--device cuda</code> if you have a GPU).
+          Point elsewhere with <code>PT_OMNIVOICE_URL</code>.
+        </p>
+
+        <label class="switch-row">
+          <input type="checkbox" id="optNeuralTts" checked>
+          <span>
+            <strong>Use OmniVoice for the ideal audio</strong>
+            <em>Off = always eSpeak. First play of a phrase is slow on CPU, then cached.</em>
+          </span>
+        </label>
+
+        <label class="field-label" for="ttsVoice">Voice preset</label>
+        <select id="ttsVoice"></select>
+
+        <label class="field-label" for="voiceDesc">Voice design <span class="lbl-opt">optional</span></label>
+        <input type="text" id="voiceDesc" placeholder="female, us accent, young adult" autocomplete="off">
+        <p class="setting-note">
+          Comma-separated attributes &mdash; gender, age, pitch, accent. Leave blank to use
+          the preset above; anything here overrides it.
+        </p>
+      </section>
+
+      <section class="setting-group">
+        <h3>AI coach <span class="opt-tag">optional &middot; OpenAI</span></h3>
+        <p class="setting-desc">
+          Scoring always runs locally on wav2vec2 &mdash; a key never changes how you are
+          graded, and the model never hears your audio. It receives only the phonemes this
+          app already scored below threshold, and rewrites them as articulation advice.
+        </p>
+
+        <label class="switch-row">
+          <input type="checkbox" id="optAiCoach" checked>
+          <span>
+            <strong>AI coach feedback</strong>
+            <em>Off, or with no key, you get the rule-based tips instead.</em>
+          </span>
+        </label>
+
+        <label class="field-label" for="apiKey">OpenAI API key</label>
+        <div class="key-row">
+          <input type="password" id="apiKey" placeholder="sk-&hellip;" autocomplete="off" spellcheck="false">
+          <button id="toggleKeyVis" class="btn btn-ghost" type="button" title="Show / hide">Show</button>
+        </div>
+        <p class="setting-note" id="modelNote"></p>
+        <p class="setting-note">
+          Stored in this browser's <code>localStorage</code> and sent to the local backend
+          per request &mdash; never written to disk server-side, never logged. On a shared
+          machine, prefer the <code>OPENAI_API_KEY</code> environment variable instead.
+        </p>
+        <div class="key-actions">
+          <button id="verifyKey" class="btn btn-secondary" type="button">Test key</button>
+          <button id="clearKey" class="btn btn-ghost" type="button">Clear</button>
+          <span id="keyStatus" class="key-status"></span>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="modal-foot">
+      <span class="foot-note">With no key, everything still runs offline.</span>
+      <button id="saveSettings" class="btn btn-primary" type="button">Save</button>
+    </div>
+  </div>
 </div>
 
 <script src="app.js"></script>
